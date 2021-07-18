@@ -5,6 +5,12 @@ Created on Sun Jul 18 08:47:23 2021
 @author: Umut
 """
 
+"""
+Faktör analizi benzeri bir yöntem kullanarak boyut indirgeme yapmak istedim.
+Ancak kategorik veriler ve sayısal veriler arasındaki korelasyon nasıl hesaplanır bulamadım.
+Sadece kategorik veriler veya sadece sayısal veriler arasındaki korelasyon hesabının yetersiz olacağını düşündüm.
+"""
+
 import numpy as np
 import pandas as pd
 
@@ -61,7 +67,16 @@ regr.fit(X_train, y_train)
 #Aytılan test verisi için fiyat tahminlerini yap
 y_pred = regr.predict(X_test)
 
+#MSE ve RMSE değerleri yazdırılıyor
 from sklearn import metrics
 print('MSE: ', metrics.mean_squared_error(y_test, y_pred))
 print('RMSE: ', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
+
+#Modeli kaydetmek ve yüklemek için
+from joblib import dump, load
+#Modeli diske kaydet
+dump(regr, 'model.joblib') 
+
+#Diskteki modeli yükle
+regr = load('model.joblib')
 
