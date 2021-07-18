@@ -56,27 +56,35 @@ X[:, :2] = imputer.transform(X[:, :2])
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
 
-#sayısal veriler için min-max normalizasyonu
-from sklearn.preprocessing import MinMaxScaler
+
 from sklearn.svm import SVR
-from sklearn.pipeline import make_pipeline
-#Model olarak SUpport Vector Regression seçildi
-regr = make_pipeline(MinMaxScaler(), SVR(kernel='linear', C=15, epsilon=0.2))
-#Verilen eğitim verilerine göre SVM modelini uygun hale getir
-regr.fit(X_train, y_train)
-#Aytılan test verisi için fiyat tahminlerini yap
-y_pred = regr.predict(X_test)
+from sklearn.preprocessing import MinMaxScaler
+
+modelSVR = SVR()
+from sklearn.model_selection import GridSearchCV
+param_grid = {'C': [0.1, 1, 10, 100],  
+              'gamma': [1, 0.1, 0.01, 0.001, 0.0001], 
+              'gamma':['scale', 'auto'],
+              'kernel': ['linear','poly']}  
+grid = GridSearchCV(modelSVR, param_grid, refit = True, verbose = 3,n_jobs=-1) 
+# Grid Serach için modelin uyumlu hale getirilmesi
+grid.fit(X_train, y_train) 
+# Tuning'den sonra en iyi parametlerleri yazdır
+print(grid.best_params_) 
+#Test verisi tahminlemesi
+grid_predictions = grid.predict(X_test) 
+
 
 #MSE ve RMSE değerleri yazdırılıyor
 from sklearn import metrics
-print('MSE: ', metrics.mean_squared_error(y_test, y_pred))
-print('RMSE: ', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
+print('MSE: ', metrics.mean_squared_error(y_test, grid_predictions))
+print('RMSE: ', np.sqrt(metrics.mean_squared_error(y_test, grid_predictions)))
 
 #Modeli kaydetmek ve yüklemek için
-from joblib import dump, load
+import joblib
 #Modeli diske kaydet
-dump(regr, 'model.joblib') 
+joblib.dump(grid.best_estimator_, 'model.pkl', compress = 1)
 
 #Diskteki modeli yükle
-regr = load('model.joblib')
+grid = joblib.load('model.pkl')
 
