@@ -62,8 +62,9 @@ from sklearn.preprocessing import MinMaxScaler
 
 modelSVR = SVR()
 from sklearn.model_selection import GridSearchCV
-param_grid = {'C': [0.1, 1, 10, 100],  
+param_grid = {'C': [1, 10, 15],  
               'gamma': [1, 0.1, 0.01, 0.001, 0.0001], 
+              'epsilon': [0.1, 0.2, 0.3],
               'gamma':['scale', 'auto'],
               'kernel': ['linear','poly']}  
 grid = GridSearchCV(modelSVR, param_grid, refit = True, verbose = 3,n_jobs=-1) 
