@@ -5,45 +5,63 @@ Created on Sun Jul 18 08:47:23 2021
 @author: Umut
 """
 
+import numpy as np
 import pandas as pd
 
+#Verileri oku
+df = pd.read_csv('voks.csv')
+#İlk 4 sütun, tahminleme için gereksiz
+#İlk 4 sütın çıkarıldı
+df = df.iloc[:,4:]
+#Aynı şekilde Tarih bilgisi de tahminleme için gereksiz olduğu için atıldı
+df.drop(['Tarih'], inplace=True, axis=1)
 
-# VERİ OKUMA
-df = pd.read_csv("voks.csv")
+#One Hot Encoding yapılacak, kategorik değişkenlere sahip sütunlar
+labels_one_hot_encoded = ["Seri","Model","Renk","Vites","Yakıt","Sehir"]
 
-#VERİ ÖNİŞLEME
+#Dummy coding yapılacak sütunları gez
+for label in labels_one_hot_encoded:
+    #DataFrame'e ilgili sütunun dummy sütun değerlerini ekle
+    df = pd.concat([df, pd.get_dummies(df[label])], axis=1)
+    #İlgili sütunun kendisini çıkartabiliriz
+    df.drop([label], inplace=True, axis=1)
 
-# 0 ile 3 arasındaki sütunlar, tahminleme için gereksiz olan değerleri içerir.
-# O yüzden bu sütunlar kaldırılıyor
-df.drop(df.iloc[:, 0:3], inplace = True, axis = 1)
+#Fiyat sütunundaki string değişkenler float türüne dönüştürülüyor
+df['Fiyat'] = df['Fiyat'].apply(lambda x:float(x.replace(' TL', '')))
 
-df_col_removed = df
+#Modelin eğitimi ve tahminlemede kullanılacak sütunlar X'de tutuluyor
+X = df.drop(['Fiyat'], axis=1).values
 
-# 1'den fazla farklı değer içermeyen sütunlar da tahminlemede işe yaramaz.
-# tek bir kategori değeri varsa zaten attribute'un
-for col in df.columns:
-    print(col + " " + str(len(df[col].unique())) + " unique values")
-    if(len(df[col].unique())==1):
-        del df_col_removed[col]
+#Tahmin edilecek Fiyat değişkeni ayıklandı
+y = df.loc[:, 'Fiyat'].values
 
-#Tarih verisinin de tahminlemede etkisinini olmadığını düşündüğüm için o sütunu attım
-del df_col_removed["Tarih"]
-
-print(len(df_col_removed.columns))
+#X--> Tahminleme yapılırken kullanılacak değerler
+#Gerçek Fiyat değerleri
 
 
-df_one_hot_encoded = df_col_removed
+#Null verileri, bulunduğu sütunun ortalama değeri ile değiştir
+from sklearn.impute import SimpleImputer
+imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
+#İlk iki sütunda sayısal veriler var
+imputer.fit(X[:, :2])
+X[:, :2] = imputer.transform(X[:, :2])
 
-from pandas.api.types import CategoricalDtype 
-df_col_removed["Seri"].unique()
-# modelin eğitildiği veriler ve test için kullanılan veriler rastgele seçilecek
-# 
-df_one_hot_encoded["Seri"] = df_col_removed["Seri"].astype(CategoricalDtype(df_col_removed["Seri"].unique()))
+#Verileri %75 eğitim, %25 test olarak ayır
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
 
-a = pd.get_dummies(df_one_hot_encoded["Seri"],prefix="Seri")
+#sayısal veriler için min-max normalizasyonu
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.svm import SVR
+from sklearn.pipeline import make_pipeline
+#Model olarak SUpport Vector Regression seçildi
+regr = make_pipeline(MinMaxScaler(), SVR(kernel='linear', C=15, epsilon=0.2))
+#Verilen eğitim verilerine göre SVM modelini uygun hale getir
+regr.fit(X_train, y_train)
+#Aytılan test verisi için fiyat tahminlerini yap
+y_pred = regr.predict(X_test)
 
-df_one_hot_encoded = pd.concat((df_one_hot_encoded,pd.get_dummies(df_one_hot_encoded["Seri"],prefix="Seri",dummy_na=True)),axis = 1)
+from sklearn import metrics
+print('MSE: ', metrics.mean_squared_error(y_test, y_pred))
+print('RMSE: ', np.sqrt(metrics.mean_squared_error(y_test, y_pred)))
 
-labels_one_hot_encoded = {"Seri","Model","Yıl","Renk","Vites","Yakıt","Şehir"}
-
-del df_one_hot_encoded["Seri"]  
